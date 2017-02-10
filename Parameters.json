@@ -1,0 +1,59 @@
+{
+    "staffing_checking":{
+        "full_time_equivalent_hours":"6",
+        "processing_time_seconds":"66",
+        "unlink_investigation_time_seconds":"300",
+        "unlink_record_processing_seconds":"30",
+        "link_record_processing_seconds":"30",
+        "average_staff_absence_percentage":"30"
+    },
+    
+    "watch_list":{
+        "imposter_rate_percent":"0.1",
+        "adult_enteries":"9000",
+        "adult_expected_application":"900",
+        "adult_biographics_pick":"810",
+        "adult_no_biographics_pick":"900",
+        "adult_manual_error_percent":"5",
+        "child_enteries":"1000",
+        "child_expected_application":"50",
+        "child_biographics_pick":"45",
+        "child_no_biographics_pick":"100",
+        "child_manual_error_percent":"5"
+    },
+    
+    "triage_FIU":{
+        "adult_1to1_percent":"75",
+        "adult_1toM_percent":"25",
+        "child_1to1_percent":"75",
+        "child_1toM_percent":"25"
+    },
+	
+    "simulation_settings":{
+        "biometric_system_match_time":"0",
+        "examiner_cost":"22.5",
+        "examiners_day_off":"0",
+        "examiners_number":"20",
+        "examiners_shift":"7",
+        "expert_cost":"45.5",
+        "experts_day_off":"0",
+        "experts_number":"20",
+        "experts_shift":"7",
+        "job_duration":"30",
+        "mean_acquisition_rate":"25284",
+        "mean_scalation_rate":"0.01",
+        "processing_time_max":"21",
+        "processing_time_min":"19",
+        "random_seed":"628",
+        "score_threshold_max":"10.0",
+        "score_threshold_min":"-10.0",
+        "shif_examiner_start":"0",
+        "shif_expert_start":"0",
+        "simulation_time":"3",
+        "t1_inspection_time_max":"21",
+        "t1_inspection_time_min":"19",
+        "t2_inspection_time_max":"21",
+        "t2_inspection_time_min":"19"
+    }
+    
+}
