@@ -39,7 +39,7 @@ import logging
 from imp import reload
 reload(logging)
 #logging.basicConfig(format='%(message)s', level=logging.DEBUG)
-logging.basicConfig(format='%(message)s', filename='logging\simulation.log', filemode='w', level=logging.INFO)
+#logging.basicConfig(format='%(message)s', filename='logging\simulation.log', filemode='w', level=logging.INFO)
 
 from itertools import accumulate
 from bisect import bisect
@@ -50,17 +50,8 @@ TRIAGE_TYPES = FMT_TYPES + ['free']
 
 # input parameters
 
-# Days of simulation
-NUM_DAYS = 1
-
-# Number of replication
-NUM_REP = 1
-
 # Referral percentage for 'AR', 'CR', 'FTA', 'CF', 'OTR'
 REFERRAL_PROB = [57, 17, 5, 12, 9]
-
-# Application average daily total
-APP_AVG_DAILY = 25284                # january
 
 # Referral percentage 1to1, 1toWL, 1toM and (1-1to1-1toWL-1toM)
 triageWeightDict = {'AR': [0.069, 0.0214, 0.013, 0.8966],
@@ -265,8 +256,8 @@ class Examiner(Staff):
 
         """
         with self.staffRes.request() as req:
-            yield req
             logging.debug(' %4.1f %s  \tREQUEST\t\t%s' %(self.env.now, self.name, sample.name))
+            yield req
             logging.debug(' %4.1f %s  \tGET EXAMI\t%s' %(self.env.now, self.name, sample.name))
 
             # remove from queue T1
@@ -487,6 +478,10 @@ def export_results(csv_file,data,fieldnames):
         writer.writerows(data)
 
 #############################################################################
+
+#def getParameters():
+
+
 # Setup and start the simulation
 
 def simulate():
@@ -525,8 +520,7 @@ def simulate():
     shif_examiner_start = int(import_settings["simulation_settings"]["shif_examiner_start"])
     shif_expert_start = int(import_settings["simulation_settings"]["shif_expert_start"])
 
-    #mean_acquisition_rate = float(import_settings["simulation_settings"]["mean_acquisition_rate"])
-    mean_acquisition_rate=APP_AVG_DAILY
+    mean_acquisition_rate = float(import_settings["simulation_settings"]["mean_acquisition_rate"])
     examiner_cost = float(import_settings["simulation_settings"]["examiner_cost"])
     examiners_number = int(import_settings["simulation_settings"]["examiners_number"])
     examiners_shift = float(import_settings["simulation_settings"]["examiners_shift"])
@@ -543,6 +537,7 @@ def simulate():
     score_threshold_min = float(import_settings["simulation_settings"]["score_threshold_min"])
     score_threshold_max = float(import_settings["simulation_settings"]["score_threshold_max"])
     simulation_time = float(import_settings["simulation_settings"]["simulation_time"])
+    number_of_replications = int(import_settings["simulation_settings"]["number_of_replications"])
 
     #############################################################################
     #print('\nAssigning the parameters ...')
@@ -554,8 +549,8 @@ def simulate():
     global NUM_EXAMINERS, COST_EXAMINER, SHIFT_EXAMINER
     global NUM_EXPERTS, COST_EXPERT, SHIFT_EXPERT
     global SIM_TIME, SCORE_MIN, SCORE_MAX
-    global ACQ_MEAN, SAMPLES_NUMBER, NUM_STATIONS, DAYS
-    global SHIFT_EXPERT_ST, SHIFT_EXAMINER_ST                                              # control T2 events
+    global ACQ_MEAN, NUM_STATIONS, DAYS, NUM_REP, RANDOM_SEED, NUM_DAYS
+    global SHIFT_EXPERT_ST, SHIFT_EXAMINER_ST, MEAN_ESCALATION_RATE                                            # control T2 events
 
     global inQueueT1, inQueueT2, queueT1List, queueT2List
     global backlogT1List, backlogT2List, peak_resolved_time, resolvedTimeList
@@ -591,15 +586,16 @@ def simulate():
     SHIFT_EXPERT = experts_shift * 60                               # Length of experts' shift in minutes
     COST_EXPERT = expert_cost/60                                    # cost of an expert per hour
     SIM_TIME = simulation_time * 24 * 60                            # Simulation time in minutes
+    NUM_DAYS = simulation_time
     SCORE_MIN = score_threshold_min                                 # Minimum threshold
     SCORE_MAX = score_threshold_max                                 # Maximum threshold
     ACQ_MEAN = 1.0 / (24*60/mean_acquisition_rate)                  # Mean acquisition rates (samples per day) for exponential distribution
     CALL_MEAN = mean_escalation_rate * ACQ_MEAN                     # Mean time to call in minutes for exponential distribution
-    SAMPLES_NUMBER = simulation_time * 30 * mean_acquisition_rate
     SHIFT_EXAMINER_ST = shif_examiner_start*60                      # hour of shift start for examiners
     SHIFT_EXPERT_ST = shif_expert_start*60                          # hour of shift start for experts
     DAYS = [1,2,3,4,5,6,7]                                          # Working days
-
+    MEAN_ESCALATION_RATE = mean_escalation_rate
+    NUM_REP = number_of_replications                                # Number of replication
     FMT_MEAN_TIME = processing_time_seconds/60.0                    # FMT processing time in minutes
     FMT_TIME = (FMT_MEAN_TIME, 0.1*FMT_MEAN_TIME)                   # FMT distribution time parameters
 
@@ -629,7 +625,6 @@ def simulate():
     logging.info(' Daily enrolment volume with facial biometric: %3.2f samples/day', mean_acquisition_rate)
     logging.info(' Biometric system match time: %3.2f seg', biometric_system_match_time)
 
-
     random.seed(RANDOM_SEED)  # This helps reproducing the results
 
     # Create an environment
@@ -637,12 +632,13 @@ def simulate():
 
     # Start the setup process
     experts = Expert(env)
-    examiners = Examiner(env, mean_escalation_rate)
+    examiners = Examiner(env, MEAN_ESCALATION_RATE)
     stations = [Station(env, 'Station %02d' % i, examiners, experts) for i in range(1,NUM_STATIONS+1)]
 
     # Execute!
-    logging.info(' %4.1f Processing (%s-day period) ...' %(env.now, simulation_time))
-    SIM_TIME = 24*60*NUM_DAYS
+    logging.info(' %4.1f Processing (%s-day period) ...' %(env.now, SIM_TIME/(24*60)))
+    # Days of simulation
+
     env.run(until=SIM_TIME)
 
     #print('\nOverall statistics ...\n')
@@ -680,7 +676,7 @@ def simulate():
 
     total_times = numpy.sum([examiners_times,experts_times])
     total_costs = numpy.sum([examiners_cost,experts_cost])
-    total_rates = (examiners.samples_resolved + experts.samples_resolved)/(simulation_time*30)
+    total_rates = (examiners.samples_resolved + experts.samples_resolved)/(SIM_TIME)
     #total_rates = numpy.sum([examiners_samples*examiners_rate,experts_samples*experts_rate])/numpy.sum([examiners_samples,experts_samples])
 
     queue_T1_avg_time = (examiners.timeInQueueT1 + experts.timeInQueueT1)/(examiners.acqQueueT1 + experts.acqQueueT1) if examiners.acqQueueT1 + experts.acqQueueT1>0 else 0.0
@@ -828,25 +824,25 @@ def simulate():
     logging.info(' Experts_Utilization:  %4.2f' %(experts_utilization))
     logging.info(' Total_Cost: $%4.1f' %(total_costs))
 
-    ############################################################################
-#    import matplotlib.pyplot as plt
-#
-#    plt.close('all')
-#
-#    fig, axes = plt.subplots(ncols=1, nrows=2)
-#    ax1, ax2 = axes.ravel()
-#
-#    fig.suptitle("Biometric Examination Office, Cost-Staff Statistical Analysis")
-#
-#    queuePlot(queueT1List, ax1, (SHIFT_EXAMINER_ST, (SHIFT_EXAMINER_ST + SHIFT_EXAMINER)))
-#    queuePlot(queueT2List, ax2, (SHIFT_EXPERT_ST, (SHIFT_EXPERT_ST + SHIFT_EXPERT)))
-#    ax1.set_xlabel("Simulation time (days)")
-#    ax2.set_xlabel("Simulation time (days)")
-#    ax1.set_ylabel("Samples in Tier 1 queue")
-#    ax2.set_ylabel("Samples in Tier 2 queue")
-#
-#    plt.show()
-    ############################################################################
+    ###########################################################################
+    import matplotlib.pyplot as plt
+
+    plt.close('all')
+
+    fig, axes = plt.subplots(ncols=1, nrows=2)
+    ax1, ax2 = axes.ravel()
+
+    fig.suptitle("Biometric Examination Office, Cost-Staff Statistical Analysis")
+
+    queuePlot(queueT1List, ax1, (SHIFT_EXAMINER_ST, (SHIFT_EXAMINER_ST + SHIFT_EXAMINER)))
+    queuePlot(queueT2List, ax2, (SHIFT_EXPERT_ST, (SHIFT_EXPERT_ST + SHIFT_EXPERT)))
+    ax1.set_xlabel("Simulation time (days)")
+    ax2.set_xlabel("Simulation time (days)")
+    ax1.set_ylabel("Samples in Tier 1 queue")
+    ax2.set_ylabel("Samples in Tier 2 queue")
+
+    plt.show()
+    ###########################################################################
 
     return fields, output, queueT1List, queueT2List
 
@@ -868,6 +864,7 @@ if __name__ == '__main__':
     df_toFIUSim = createDF(REFERRAL_TYPES, FMT_TYPES, 'float32')
     df_AtTimeSim = createDF(REFERRAL_TYPES, FMT_TYPES, 'float32')
     df_OpTimeSim = createDF(REFERRAL_TYPES, FMT_TYPES, 'float32')
+    getParameters()
 
     for i in range(NUM_REP):
         print('Replication', i)
