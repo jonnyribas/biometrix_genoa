@@ -21,6 +21,8 @@ import simpy
 import json
 import csv
 import pandas as pd
+import matplotlib.pyplot as plt
+from simpy_parameters import *
 
 #from pympler import tracker
 #tr = tracker.SummaryTracker()
@@ -44,14 +46,12 @@ reload(logging)
 from itertools import accumulate
 from bisect import bisect
 
-REFERRAL_TYPES = ['AR', 'CR', 'FTA', 'CF', 'OTR']
-FMT_TYPES = ['1to1', '1toWL', '1toM']
-TRIAGE_TYPES = FMT_TYPES + ['free']
-
 # input parameters
-
 # Referral percentage for 'AR', 'CR', 'FTA', 'CF', 'OTR'
 REFERRAL_PROB = [57, 17, 5, 12, 9]
+
+# Application average daily total
+APP_AVG_DAILY = 25284                # january
 
 # Referral percentage 1to1, 1toWL, 1toM and (1-1to1-1toWL-1toM)
 triageWeightDict = {'AR': [0.069, 0.0214, 0.013, 0.8966],
@@ -70,9 +70,9 @@ fmtWeigthDict = {'AR': dict(zip(FMT_TYPES, [0.0033, 0.0035, 0.0262])),
 # Impostors Percentage for 'AR', 'CR', 'FTA', 'CF', 'OTR'
 impostorProb = [0.10, 0.10, 0.10, 0.10, 0.10]
 
-
-
 impostorProbDict = dict(zip(REFERRAL_TYPES,impostorProb))
+
+
 # pandas output
 def createDF(index, columns, dat):
     dat = (dat + ', ')*(len(columns)-1)+dat
@@ -123,14 +123,15 @@ def queueAvg(st):
         s_wx += (st[i+1][0]-st[i][0])*(st[i][1])
     return s_wx / s_w if s_w > 0 else 0.0
 
-def queuePlot(st, plt, shift):
+def queuePlot(st, plt, shift, labels):
     # plot the list queue
     t=[]
     y=[]
     for i in range(len(st)):
         t.append(st[i][0]/(60.0*24.0))
         y.append(st[i-1][1])
-    plt.step(t,y)
+    plt.step(t, y, label=labels)
+    plt.legend(loc='best')
     numShifts = int(SIM_TIME/max(shift[1]-shift[0], 24*60))
     step = 1
     if SIM_TIME > 15*24*60:
@@ -421,7 +422,7 @@ class Station(object):
             # start match analysis
             enterBioEng = self.env.now
             yield self.env.timeout(distributions('match_time'))
-
+            self.samples_acquired += 1
             self.bioEngBusyTime += self.env.now - enterBioEng
             self.triageType = choicesDist(TRIAGE_TYPES, triageWeightDict[self.referralType])
             if random.random() <= impostorProbDict[self.referralType]:
@@ -478,14 +479,27 @@ def export_results(csv_file,data,fieldnames):
         writer.writerows(data)
 
 #############################################################################
+def getParameters():
+    
+    ############################################################################
+    print('\nAssigning the parameters ...')
 
-#def getParameters():
+    global PT_MEAN, PT_SIGMA, MATCH_MEAN
+    global CALL_MEAN, JOB_DURATION, EXPERT_DAY_OFF, EXAMINER_DAY_OFF
+    global T1_INSPECTION_MEAN, T1_INSPECTION_SIGMA
+    global T2_INSPECTION_MEAN, T2_INSPECTION_SIGMA
+    global NUM_EXAMINERS, COST_EXAMINER, SHIFT_EXAMINER
+    global NUM_EXPERTS, COST_EXPERT, SHIFT_EXPERT
+    global SIM_TIME, SCORE_MIN, SCORE_MAX
+    global ACQ_MEAN, NUM_STATIONS, DAYS, NUM_REP, RANDOM_SEED, NUM_DAYS
+    global SHIFT_EXPERT_ST, SHIFT_EXAMINER_ST, MEAN_ESCALATION_RATE                                            # control T2 events
 
+    #### impostor
+    global FMT_TIME
+    
+    global processing_time, T1_inspection_time, T2_inspection_time
 
-# Setup and start the simulation
-
-def simulate():
-
+   # get all simulation parameters from json file
     logging.debug('Biometric Examination Office \nCost-Staff Statistical Analysis\n')
     logging.debug('Reading of settings ...')
 
@@ -539,33 +553,6 @@ def simulate():
     simulation_time = float(import_settings["simulation_settings"]["simulation_time"])
     number_of_replications = int(import_settings["simulation_settings"]["number_of_replications"])
 
-    #############################################################################
-    #print('\nAssigning the parameters ...')
-
-    global PT_MEAN, PT_SIGMA, MATCH_MEAN
-    global CALL_MEAN, JOB_DURATION, EXPERT_DAY_OFF, EXAMINER_DAY_OFF
-    global T1_INSPECTION_MEAN, T1_INSPECTION_SIGMA
-    global T2_INSPECTION_MEAN, T2_INSPECTION_SIGMA
-    global NUM_EXAMINERS, COST_EXAMINER, SHIFT_EXAMINER
-    global NUM_EXPERTS, COST_EXPERT, SHIFT_EXPERT
-    global SIM_TIME, SCORE_MIN, SCORE_MAX
-    global ACQ_MEAN, NUM_STATIONS, DAYS, NUM_REP, RANDOM_SEED, NUM_DAYS
-    global SHIFT_EXPERT_ST, SHIFT_EXAMINER_ST, MEAN_ESCALATION_RATE                                            # control T2 events
-
-    global inQueueT1, inQueueT2, queueT1List, queueT2List
-    global backlogT1List, backlogT2List, peak_resolved_time, resolvedTimeList
-
-    #### impostor
-    global FMT_TIME
-
-
-
-    peak_resolved_time = 0.0                                        # peak time taken for a sample to resolved
-    resolvedTimeList = []                                           # list for time from acq to resolved
-    inQueueT1, inQueueT2 = 0, 0                                     # number in queue for Tiers
-    queueT1List, queueT2List = [(0,0)], [(0,0)]                     # global list to store number in queue over time
-    backlogT1List, backlogT2List = [], []                           # global list to store backlog @shift begin
-
     processing_time = [processing_time_min, processing_time_max]
     T1_inspection_time = [t1_inspection_time_min, t1_inspection_time_max]
     T2_inspection_time = [t2_inspection_time_min, t2_inspection_time_max]
@@ -601,6 +588,21 @@ def simulate():
 
     EXPERT_DAY_OFF = [i for i in range((len(DAYS) - experts_day_off + 1), len(DAYS) +1)]
     EXAMINER_DAY_OFF = [i for i in range((len(DAYS) - examiners_day_off + 1), len(DAYS) +1)]
+     
+# Setup and start the simulation
+
+def simulate():
+    
+    global inQueueT1, inQueueT2, queueT1List, queueT2List
+    global backlogT1List, backlogT2List, peak_resolved_time, resolvedTimeList
+    
+    peak_resolved_time = 0.0                                        # peak time taken for a sample to resolved
+    resolvedTimeList = []                                           # list for time from acq to resolved
+    inQueueT1, inQueueT2 = 0, 0                                     # number in queue for Tiers
+    queueT1List, queueT2List = [(0,0)], [(0,0)]                     # global list to store number in queue over time
+    backlogT1List, backlogT2List = [], []                           # global list to store backlog @shift begin
+
+
 
     #############################################################################
     #print('\nProcessing (%s-day period) ...' % simulation_time)
@@ -621,11 +623,9 @@ def simulate():
     logging.info(' Maximum threshold: %3.2f', SCORE_MAX)
     logging.info(' Mean acquisition rates for exponential distribution: %3.2f samples/min' %(ACQ_MEAN))
     #logging.info(' Mean time to call in minutes for exponential distribution: %3.2f', CALL_MEAN)
-    logging.info(' Probability to call Tier 2 from Tier 1: %3.2f', mean_escalation_rate)
-    logging.info(' Daily enrolment volume with facial biometric: %3.2f samples/day', mean_acquisition_rate)
-    logging.info(' Biometric system match time: %3.2f seg', biometric_system_match_time)
-
-    random.seed(RANDOM_SEED)  # This helps reproducing the results
+    #logging.info(' Probability to call Tier 2 from Tier 1: %3.2f', mean_escalation_rate)
+    logging.info(' Daily enrolment volume with facial biometric: %3.2f samples/day', ACQ_MEAN/(24*60))
+    logging.info(' Biometric system match time: %3.2f seg', MATCH_MEAN*30)
 
     # Create an environment
     env = simpy.Environment()
@@ -741,21 +741,21 @@ def simulate():
               "Experts_Utilization",
               "Total_Cost"]
 
-    output.append({"Sample_Acquisition_Rate": mean_acquisition_rate,
-                   "T1_Inspection_Time_Min": t1_inspection_time_min,
-                   "T1_Inspection_Time_Max": t1_inspection_time_max,
-                   "T2_Inspection_Time_Min": t2_inspection_time_min,
-                   "T2_Inspection_Time_Max": t2_inspection_time_max,
-                   "Expert_Inspection_Cost": expert_cost/60,
+    output.append({"Sample_Acquisition_Rate": ACQ_MEAN/(24*60),
+                   "T1_Inspection_Time_Min": T1_inspection_time[0],
+                   "T1_Inspection_Time_Max": T1_inspection_time[1],
+                   "T2_Inspection_Time_Min": T2_inspection_time[0],
+                   "T2_Inspection_Time_Max": T2_inspection_time[1],
+                   "Expert_Inspection_Cost": COST_EXPERT,
                    "Experts_Mean_Backlog": experts_mean_backlog,
-                   "Examiner_Processing_Time_Min": processing_time_min,
-                   "Examiner_Processing_Time_Max": processing_time_max,
-                   "Examiner_Processing_Cost": examiner_cost/60,
+                   "Examiner_Processing_Time_Min": processing_time[0],
+                   "Examiner_Processing_Time_Max": processing_time[1],
+                   "Examiner_Processing_Cost": COST_EXAMINER,
                    "Examiners_Mean_Backlog": examiners_mean_backlog,
-                   "Threshold_Min": score_threshold_min,
-                   "Threshold_Max": score_threshold_max,
-                   "Experts_Number": experts_number,
-                   "Examiners_Number": examiners_number,
+                   "Threshold_Min": SCORE_MIN,
+                   "Threshold_Max": SCORE_MAX,
+                   "Experts_Number": NUM_EXPERTS,
+                   "Examiners_Number": NUM_EXAMINERS,
                    "Created_Samples_Number": created_samples,
                    "Acquired_Samples_Number": acquired_samples,
                    "Waiting_Biometric_Samples_Number": waiting_samples,
@@ -782,22 +782,22 @@ def simulate():
                    "Experts_Utilization": experts_utilization,
                    "Total_Cost": total_costs})
 
-    logging.info(' Sample_Acquisition_Rate:  %4.1f samples/day' %(mean_acquisition_rate))
-    logging.info(' Acquisition_Rate:  %4.2f samples/day' %(queued_samples/mean_acquisition_rate))
-    logging.info(' T1_Inspection_Time_Min:  %4.1f min' %(t1_inspection_time_min))
-    logging.info(' T1_Inspection_Time_Max:  %4.1f min' %(t1_inspection_time_max))
-    logging.info(' T2_Inspection_Time_Min:  %4.1f min' %(t2_inspection_time_min))
-    logging.info(' T2_Inspection_Time_Max:  %4.1f min' %(t2_inspection_time_max))
-    logging.info(' Expert_Inspection_Cost:  $%4.1f' %(expert_cost/60))
+    logging.info(' Sample_Acquisition_Rate:  %4.1f samples/day' %( ACQ_MEAN/(24*60)))
+    logging.info(' Acquisition_Rate:  %4.2f samples/day' %(queued_samples/ ACQ_MEAN/(24*60)))
+    logging.info(' T1_Inspection_Time_Min:  %4.1f min' %(T1_inspection_time[0]))
+    logging.info(' T1_Inspection_Time_Max:  %4.1f min' %(T1_inspection_time[1]))
+    logging.info(' T2_Inspection_Time_Min:  %4.1f min' %(T2_inspection_time[0]))
+    logging.info(' T2_Inspection_Time_Max:  %4.1f min' %(T2_inspection_time[1]))
+    logging.info(' Expert_Inspection_Cost:  $%4.1f' %(COST_EXPERT))
     logging.info(' Experts_Mean_Backlog:  %4.1f samples' %(experts_mean_backlog))
-    logging.info(' Examiner_Processing_Time_Min:  %4.1f min' %(processing_time_min))
-    logging.info(' Examiner_Processing_Time_Max:  %4.1f min' %(processing_time_max))
-    logging.info(' Examiner_Processing_Cost:  $%4.1f' %(examiner_cost/60))
+    logging.info(' Examiner_Processing_Time_Min:  %4.1f min' %(processing_time[0]))
+    logging.info(' Examiner_Processing_Time_Max:  %4.1f min' %(processing_time[1]))
+    logging.info(' Examiner_Processing_Cost:  $%4.1f' %(COST_EXAMINER))
     logging.info(' Examiners_Mean_Backlog:  %4.1f samples' %(examiners_mean_backlog))
-    logging.info(' Threshold_Min:  %4.2f' %(score_threshold_min))
-    logging.info(' Threshold_Max:  %4.2f' %(score_threshold_max))
-    logging.info(' Experts_Number:  %4.1f experts' %(experts_number))
-    logging.info(' Examiners_Number:  %4.1f examiners' %(examiners_number))
+    logging.info(' Threshold_Min:  %4.2f' %(SCORE_MIN))
+    logging.info(' Threshold_Max:  %4.2f' %(SCORE_MAX))
+    logging.info(' Experts_Number:  %4.1f experts' %(NUM_EXPERTS))
+    logging.info(' Examiners_Number:  %4.1f examiners' %(NUM_EXAMINERS))
     logging.info(' Created_Samples_Number:  %4.1f samples' %(created_samples))
     logging.info(' Acquired_Samples_Number:  %4.1f samples' %(acquired_samples))
     logging.info(' Waiting_Biometric_Samples_Number:  %4.1f samples' %(waiting_samples))
@@ -824,25 +824,7 @@ def simulate():
     logging.info(' Experts_Utilization:  %4.2f' %(experts_utilization))
     logging.info(' Total_Cost: $%4.1f' %(total_costs))
 
-    ###########################################################################
-    import matplotlib.pyplot as plt
 
-    plt.close('all')
-
-    fig, axes = plt.subplots(ncols=1, nrows=2)
-    ax1, ax2 = axes.ravel()
-
-    fig.suptitle("Biometric Examination Office, Cost-Staff Statistical Analysis")
-
-    queuePlot(queueT1List, ax1, (SHIFT_EXAMINER_ST, (SHIFT_EXAMINER_ST + SHIFT_EXAMINER)))
-    queuePlot(queueT2List, ax2, (SHIFT_EXPERT_ST, (SHIFT_EXPERT_ST + SHIFT_EXPERT)))
-    ax1.set_xlabel("Simulation time (days)")
-    ax2.set_xlabel("Simulation time (days)")
-    ax1.set_ylabel("Samples in Tier 1 queue")
-    ax2.set_ylabel("Samples in Tier 2 queue")
-
-    plt.show()
-    ###########################################################################
 
     return fields, output, queueT1List, queueT2List
 
@@ -864,10 +846,21 @@ if __name__ == '__main__':
     df_toFIUSim = createDF(REFERRAL_TYPES, FMT_TYPES, 'float32')
     df_AtTimeSim = createDF(REFERRAL_TYPES, FMT_TYPES, 'float32')
     df_OpTimeSim = createDF(REFERRAL_TYPES, FMT_TYPES, 'float32')
+    
     getParameters()
+    random.seed(RANDOM_SEED)  # This helps reproducing the results
 
-    for i in range(NUM_REP):
-        print('Replication', i)
+    plt.close('all')
+    fig, axes = plt.subplots(ncols=1, nrows=2)
+    ax1, ax2 = axes.ravel()
+    fig.suptitle("Biometric Examination Office, Cost-Staff Statistical Analysis")
+    ax1.set_xlabel("Simulation time (days)")
+    ax2.set_xlabel("Simulation time (days)")
+    ax1.set_ylabel("Referrals in FMT queue")
+    ax2.set_ylabel("Referrals in FIU queue")
+    
+    for rep in range(NUM_REP):
+        print('Replication', rep)
         impostorDict = dict(zip(REFERRAL_TYPES, [0, 0, 0, 0, 0]))
         populationTotal = dict(zip(REFERRAL_TYPES, [0, 0, 0, 0, 0]))
         atTimeTotal = dict(zip(REFERRAL_TYPES, [0, 0, 0, 0, 0]))
@@ -878,8 +871,10 @@ if __name__ == '__main__':
         df_impFMT = createDF(REFERRAL_TYPES, FMT_TYPES, 'int32')
         df_impFIU = createDF(REFERRAL_TYPES, FMT_TYPES, 'int32')
 
-        simulate()
-
+        fields, output, queueT1List, queueT2List = simulate()
+        queuePlot(queueT1List, ax1, (SHIFT_EXAMINER_ST, (SHIFT_EXAMINER_ST + SHIFT_EXAMINER)), 'Replication ' + str(rep))
+        queuePlot(queueT2List, ax2, (SHIFT_EXPERT_ST, (SHIFT_EXPERT_ST + SHIFT_EXPERT)), 'Replication ' + str(rep))
+        
         sumReplication(populationTotal,'Total Population')
         sumReplication(populationTotal,'Total Impostors')
         sumReplication(populationTotal,'Total FMT Time (min)')
@@ -887,7 +882,8 @@ if __name__ == '__main__':
 
         df_toFMTSim = df_toFMTSim + df_toFMT/NUM_DAYS
         df_toFIUSim = df_toFIUSim + df_toFIU/NUM_DAYS
-
+    
+    plt.show()
     df_popSim = df_popSim/NUM_REP
     df_toFMTSim = df_toFMTSim/NUM_REP
     df_toFIUSim = df_toFIUSim/NUM_REP
