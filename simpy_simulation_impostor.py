@@ -50,9 +50,6 @@ from bisect import bisect
 # Referral percentage for 'AR', 'CR', 'FTA', 'CF', 'OTR'
 REFERRAL_PROB = [57, 17, 5, 12, 9]
 
-# Application average daily total
-APP_AVG_DAILY = 25284                # january
-
 # Referral percentage 1to1, 1toWL, 1toM and (1-1to1-1toWL-1toM)
 triageWeightDict = {'AR': [0.069, 0.0214, 0.013, 0.8966],
                     'CR': [0.0, 0.2153, 0.1111, 0.6736],
