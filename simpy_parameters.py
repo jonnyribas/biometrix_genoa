@@ -23,10 +23,6 @@ class Parameters:
     JOB_DURATION = 0.0
     EXPERT_DAY_OFF = 0
     EXAMINER_DAY_OFF = 0
-    T1_INSPECTION_MEAN = 1.0
-    T1_INSPECTION_SIGMA = 0.1
-    T2_INSPECTION_MEAN = 1.0
-    T2_INSPECTION_SIGMA = 0.1
     NUM_EXAMINERS = 10
     COST_EXAMINER = 1
     SHIFT_EXAMINER = 24
@@ -43,23 +39,32 @@ class Parameters:
     EXAMINER_DAY_OFF = []
     SHIFT_EXPERT_ST = 0
     SHIFT_EXAMINER_ST = 0
+    SHIFT_TRIAGE = 24
+    SHIFT_TRIAGE_ST = 5
+    TRIAGE_DAY_OFF = 2
+    NUM_TRIAGE = 1
     NUM_DAYS = 1
     NUM_REP = 1
     MEAN_ESCALATION_RATE = 1.0
     FMT_TIME = (1, 0.1)
+    TRIAGE_TIME = (1, 0.1)
+    REFERRAL_SIM = ['AR', 'FTA']
+    PROCEDURE_TYPES = ["lights_out_match", "possible_match", "no_match"]
     REFERRAL_TYPES = ['AR', 'CR', 'FTA', 'CF', 'OTR']
     FMT_TYPES = ['1to1', '1toWL', '1toM']
-    TRIAGE_TYPES = FMT_TYPES + ['free']
+    REFERRAL_DEST = FMT_TYPES + ['free']
     REFERRAL_PROB = [57, 17, 5, 12, 9]
-    TRIAGE_PERC = {	 'AR': [0.069, 0.0214, 0.013, 0.8966],
+    REFERRAL_PERC = {	 'AR': [0.069, 0.0214, 0.013, 0.8966],
                         'CR': [0.0, 0.2153, 0.1111, 0.6736],
                         'FTA': [0.0, 0.0214, 0.0, 0.9786],
                         'CF': [0.0, 0.2153, 0.111, 0.6736],
                         'OTR': [0.069, 0.0214, 0.013, 0.8966]}
     FMT_PERC = dict()
-    
+    TRIAGE_PERC = dict()
+    TRIA_REFERRAL = dict()
     IMPOSTOR_PERC = [0.10, 0.10, 0.10, 0.10, 0.10]
-    
+    MATCHING = dict()
+
 class arrivalParam:
     DAYS = [1,2,3,4,5,6,7]              # day of week
     OPEN_HOURS = 8                      # number the hours/day with arrival OPEN
