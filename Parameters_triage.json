@@ -1,3 +1,97 @@
+<<<<<<< HEAD
+{
+    "staffing_checking":{
+        "full_time_equivalent_hours":"6",
+        "fmt_time_seconds":"66",
+		"triage_time_seconds":"66",
+		"fiu_time_seconds":"66",
+        "average_staff_absence_percentage":"30",
+		"impostor_percentage":[0.1, 0.1, 0.1, 0.1, 0.1],
+		"referral_percentage": [57, 17, 5, 0, 9],
+		"matching":{	
+								"AR": {"1toWL": [0.35, 99.65, 0.0], "1to1": [79.3, 20.7, 0.03], "1toM": [60.08, 39.02, 0.9]},
+								"FTA": {"1toWL": [0.35, 99.65, 0.0], "1to1": [0.0, 0.0, 0.03], "1toM": [60.08, 39.02, 0.9]}
+							},
+		"FMT_transfer":{	
+								"AR": {"1toWL": [1, 1, 0], "1to1": [1, 1, 1], "1toM": [1, 1, 0]},
+								"FTA": {"1toWL": [1, 1, 0], "1to1": [0, 0, 0], "1toM": [1, 1, 0]}
+							},
+		"FMT_referral":{
+								"AR": {"1toWL": [1, 0.0035, 0], "1to1": [1, 0.0035, 1], "1toM": [1, 0.0035, 0]},
+								"FTA": {"1toWL": [1, 0.0035, 0], "1to1": [0, 0, 0], "1toM": [1, 0.0035, 0]}
+						 },	
+		"triage_transfer":{
+								"AR": {"1toWL": [1, 1, 0], "1to1": [1, 1, 1], "1toM": [1, 1, 0]},
+								"FTA": {"1toWL": [1, 1, 0], "1to1": [0, 0, 0], "1toM": [1, 1, 0]}
+						 },	
+		"triage_referral":{
+								"AR": {"1toWL": [1, 1, 0], "1to1": [1, 1, 0.0003], "1toM": [0.009, 0.009, 0]},
+								"FTA": {"1toWL": [1, 1, 0], "1to1": [0, 0, 0], "1toM": [0.009, 0.009, 0]}
+						 },	
+		"FIU_transfer":{
+								"AR": {"1toWL": [1, 1, 0], "1to1": [1, 1, 1], "1toM": [1, 1, 0]},
+								"FTA": {"1toWL": [1, 1, 0], "1to1": [0, 0, 0], "1toM": [1, 1, 0]}
+						 },
+		"FIU_referral":{
+								"AR": {"1toWL": [2, 2, 0], "1to1": [1, 1, 2], "1toM": [2, 2, 0]},
+								"FTA": {"1toWL": [2, 2, 0], "1to1": [0, 0, 2], "1toM": [2, 2, 0]}
+						 },
+		"triage_percentage":{	
+								"AR": [0.069, 0.0214, 0.013],
+								"CR": [0.0, 0.2153, 0.1111],
+								"FTA": [0.0, 0.0214, 0.0],
+								"CF": [0.0, 0.2153, 0.111],
+								"OTR": [0.069, 0.0214, 0.013]						 
+							}
+	},
+   
+    "watch_list":{
+        "imposter_rate_percent":"0.1",
+        "adult_enteries":"9000",
+        "adult_expected_application":"900",
+        "adult_biographics_pick":"810",
+        "adult_no_biographics_pick":"900",
+        "adult_manual_error_percent":"5",
+        "child_enteries":"1000",
+        "child_expected_application":"50",
+        "child_biographics_pick":"45",
+        "child_no_biographics_pick":"100",
+        "child_manual_error_percent":"5"
+    },
+	
+    "simulation_settings":{
+        "biometric_system_match_time":"0",
+        
+		
+		"mean_acquisition_rate":"30629",
+		"random_seed":"628",
+        "simulation_time":"2",
+		"number_of_replications":"1",
+		
+        "examiners_day_off":"2",
+        "examiners_number":"1",
+        "examiners_shift":"6",
+        "shif_examiner_start":"0",
+		
+        "experts_day_off":"2",
+        "experts_number":"2",
+        "experts_shift":"6",
+		"shif_expert_start":"0",
+		
+		"arrivals_day_off":"0",
+		"arrivals_shift":"8",
+		"arrivals_shif_start":"0",
+		
+		"triage_day_off":"0",
+		"triage_shift":"8",
+		"shif_triage_start":"0",
+		
+        "examiner_cost":"22.5",
+		"expert_cost":"45.5",
+        "mean_scalation_rate":"0.01"
+    }
+    
+=======
 {
     "staffing_checking":{
         "full_time_equivalent_hours":"6",
@@ -89,4 +183,5 @@
         "mean_scalation_rate":"0.01"
     }
     
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
 }

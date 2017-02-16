@@ -70,10 +70,19 @@ def distributions(distType, ref=None):
     return {
         # Return actual processing time for examination of a biometric sample.
         'time_per_examination': random.normalvariate(param.PT_MEAN, param.PT_SIGMA),
+<<<<<<< HEAD
+        # Return actual inspection time for FMT.
+        'fmt_processing_time': random.normalvariate(*param.FMT_TIME),
+        # Return time per examination at Triage
+        'triage_processing_time': random.normalvariate(*param.TRIAGE_TIME),
+        # Return actual inspection time for FIU.
+        'fiu_processing_time': random.normalvariate(*param.FMT_TIME),
+=======
         # Return actual inspection time for T1.
         'fmt_processing_time': random.normalvariate(*param.FMT_TIME),
         # Return time per examination at FMT
         'triage_processing_time': random.normalvariate(*param.TRIAGE_TIME),
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
         # Return escalation time for experts.
         'time_per_escalation': random.expovariate(param.CALL_MEAN),
         # Return actual acquisition time for sample.
@@ -270,6 +279,30 @@ class Examiner(Staff):
             if param.TRIA_TRANSFER[sample.referralType][sample.triageType][sample.matchType] == 1:
                 if param.TRIA_REFERRAL[sample.referralType][sample.triageType][sample.matchType] == 1:
                     if param.FIU_TRANSFER[sample.referralType][sample.triageType][sample.matchType] == 1:
+<<<<<<< HEAD
+                        send2FIU(sample, experts, self.env.now, self.name)
+                        self.env.process(experts.callFIU(sample))
+                    else:
+                        # blocked
+                        blockedDictFMT[sample.referralType] += 1
+                elif param.TRIA_REFERRAL[sample.referralType][sample.triageType][sample.matchType] > 0:
+                    # send to triage.
+                    self.samplesSendToTriage += 1
+                    send2Triage(sample, experts, self.env.now, 'FMT')
+                    logging.debug(' %4.1f %s  \tTO TRIAGE.\t\t%sn' % (self.env.now, sample.name, sample.name))
+                    self.env.process(triage.callTriage(sample, experts))
+                else:
+                    # blocked
+                     blockedDictFMT[sample.referralType] += 1
+            else:
+                # blocked
+                blockedDictFMT[sample.referralType] += 1
+        else:
+            # passport production
+            passportDictFMT[sample.referralType] += 1
+
+def send2Triage(sample, experts, now, name):
+=======
                         self.env.process(experts.operation(sample))
                 elif param.TRIA_REFERRAL[sample.referralType][sample.triageType][sample.matchType] > 0:
                     # send to triage.
@@ -290,6 +323,7 @@ class Examiner(Staff):
 
 
 def sent2Triage(sample, triage, experts, now, name):
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
     global inQueueTriage
     # increment No Referral count
     incDataframe(df_referralRate, 'Referral to FIU', sample.referralType)
@@ -349,6 +383,8 @@ class Triage(Staff):
                         %(self.env.now, self.name, sample.name, self.samples_inspected))
             self.env.process(self.exitTriageTransfer(sample, experts))
 
+<<<<<<< HEAD
+=======
 #            # send to Expert?
 #            if random.random() <= param.TRIA_REFERRAL[sample.referralType][sample.triageType]:
 #                # send to expert.
@@ -368,6 +404,7 @@ class Triage(Staff):
 #                            %(self.env.now, self.name, sample.name, self.appTimeResolved/self.samples_resolved))
 #            # release the staff resource
 
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
             logging.debug(' %4.1f %s  \tRELEASE\t\t%s' %(self.env.now, self.name, sample.name))
 
     def exitTriageTransfer(self, sample, experts):
@@ -381,6 +418,21 @@ class Triage(Staff):
 
             if param.FIU_TRANSFER[sample.referralType][sample.triageType][sample.matchType] == 1:
                     self.samplesSendToFIU += 1
+<<<<<<< HEAD
+                    send2FIU(sample, experts, self.env.now, 'TRIAGE')
+                    logging.debug(' %4.1f %s  \tTO TRIAGE.\t\t%sn' % (self.env.now, sample.name, sample.name))
+                    self.env.process(experts.callFIU(sample))
+            else:
+                # blocked
+                blockedDictTriage[sample.referralType] += 1
+        else:
+            # passport production
+            passportDictTriage[sample.referralType] += 1
+
+
+
+def send2FIU(sample, experts, now, name):
+=======
                     sent2FIU(sample, experts, self.env.now, 'TRIAGE')
                     logging.debug(' %4.1f %s  \tTO TRIAGE.\t\t%sn' % (self.env.now, sample.name, sample.name))
 
@@ -389,6 +441,7 @@ class Triage(Staff):
 
 
 def sent2FIU(sample, experts, now, name):
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
     global inQueueT2
 
     # increment No Referral count
@@ -413,7 +466,11 @@ class Expert(Staff):
         self.samples_examined = 0               # samples inspected from T1 queue
         self.samples_resolved
 
+<<<<<<< HEAD
+    def callFIU(self, sample):
+=======
     def operation(self, sample):
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
         global inQueueT2, peak_resolved_time
 
         with self.staffRes.request(priority=1) as req:
@@ -428,7 +485,11 @@ class Expert(Staff):
             if sample.impostor:
                 impostorDictFIU[sample.referralType] += 1
 
+<<<<<<< HEAD
+            examination_time = numpy.abs(distributions('fiu_processing_time'))
+=======
             examination_time = numpy.abs(distributions('fmt_processing_time'))
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
             yield self.env.timeout(examination_time)
             opTimeTotal[sample.referralType] += examination_time
 
@@ -444,7 +505,22 @@ class Expert(Staff):
 
             logging.debug(' %4.1f %s  \tEND EXAM\t%s\tSamples examined @T2: %i'
                                 %(self.env.now, self.name, sample.name, self.samples_inspected))
+<<<<<<< HEAD
+        exitFIU(sample, self.env.now)
+              
+def exitFIU(sample, now):
+    global peak_resolved_time
 
+    if param.FIU_REFERRAL[sample.referralType][sample.triageType][sample.matchType] == 2 and sample.impostor:
+        # blocked
+        blockedDictFIU[sample.referralType] += 1
+    else:
+        # passport production
+        passportDictFIU[sample.referralType] += 1
+            
+=======
+
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
 #############################################################################
 
 class Sample(object):
@@ -560,12 +636,30 @@ class Station(object):
 
             # choose lights on, possible match or no_match
             self.matchType = choicesDist(param.PROCEDURE_TYPES, param.MATCHING[self.referralType][self.triageType].values())
+<<<<<<< HEAD
+            sample = Sample(sample, self.referralType, self.triageType, self.matchType, impostor=self.impostor, start=start, enterT1=self.env.now)
+=======
 
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
             if param.FMT_TRANSFER[self.referralType][self.triageType][self.matchType] == 1:
                 if param.FMT_REFERRAL[self.referralType][self.triageType][self.matchType] == 1:
                     if param.TRIA_TRANSFER[self.referralType][self.triageType][self.matchType] == 1:
                         if param.TRIA_REFERRAL[self.referralType][self.triageType][self.matchType] == 1:
                             if param.FIU_TRANSFER[self.referralType][self.triageType][self.matchType] == 1:
+<<<<<<< HEAD
+                                send2FIU(sample, experts, self.env.now, self.name)
+                                self.env.process(experts.callFIU(sample))
+
+                        elif param.TRIA_REFERRAL[self.referralType][self.triageType][self.matchType] > 0:
+                            send2Triage(sample, experts, self.env.now, self.name)
+                            self.env.process(triage.callTriage(sample, experts))
+
+                elif param.FMT_REFERRAL[self.referralType][self.triageType][self.matchType] > 0:
+                    self.env.process(examiners.callFMT(sample, triage, experts))
+
+            # blocked
+            blockedDict[sample.referralType] += 1
+=======
                                 self.env.process(examiners.callFMT(Sample(sample, self.referralType, self.triageType, self.matchType, impostor=self.impostor, start=start, enterT1=self.env.now), triage, experts))
 
                         elif param.TRIA_REFERRAL[self.referralType][self.triageType][self.matchType] > 0:
@@ -576,6 +670,7 @@ class Station(object):
 
             # blocked
 
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
 
 
 
@@ -596,6 +691,11 @@ class Station(object):
             self.instantStats()
 
         else:
+<<<<<<< HEAD
+            # passport production
+            passportDict[self.referralType] += 1
+=======
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
             # increment No Referral count
             incDataframe(df_referralRate, 'No Referral', self.referralType)
 
@@ -651,8 +751,14 @@ def getParameters():
     import_settings=read_settings("Parameters_triage.json")
     # staffing
     full_time_equivalent_hours = int(import_settings["staffing_checking"]["full_time_equivalent_hours"])
+<<<<<<< HEAD
+    fmt_time_seconds = int(import_settings["staffing_checking"]["fmt_time_seconds"])
+    triage_time_seconds = int(import_settings["staffing_checking"]["triage_time_seconds"])
+    fiu_time_seconds = int(import_settings["staffing_checking"]["fiu_time_seconds"])
+=======
     processing_time_seconds = int(import_settings["staffing_checking"]["processing_time_seconds"])
     triage_time_seconds = int(import_settings["staffing_checking"]["triage_time_seconds"])
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
     average_staff_absence_percentage = int(import_settings["staffing_checking"]["average_staff_absence_percentage"])
     impostor_percentage = import_settings["staffing_checking"]["impostor_percentage"]
     referral_percentage = import_settings["staffing_checking"]["referral_percentage"]
@@ -731,10 +837,21 @@ def getParameters():
 
     param.MEAN_ESCALATION_RATE = mean_escalation_rate
     param.NUM_REP = number_of_replications                                # Number of replication
+<<<<<<< HEAD
+    
+    param.FMT_MEAN_TIME = fmt_time_seconds/60.0                    # FMT processing time in minutes
+    param.TRIAGE_MEAN_TIME = triage_time_seconds/60.0                     # FMT processing time in minutes
+    param.FIU_MEAN_TIME = fiu_time_seconds/60.0                     # FMT processing time in minutes
+ 
+    param.FMT_TIME = (param.FMT_MEAN_TIME, 0.1*param.FMT_MEAN_TIME)       # FMT distribution time parameters
+    param.TRIAGE_TIME = (param.TRIAGE_MEAN_TIME, 0.1*param.TRIAGE_MEAN_TIME)       # FMT distribution time parameters
+    param.FIU_TIME = (param.FIU_MEAN_TIME, 0.1*param.FIU_MEAN_TIME)       # FMT distribution time parameters
+=======
     param.FMT_MEAN_TIME = processing_time_seconds/60.0                    # FMT processing time in minutes
     param.TRIAGE_MEAN_TIME = triage_time_seconds/60.0                     # FMT processing time in minutes
     param.FMT_TIME = (param.FMT_MEAN_TIME, 0.1*param.FMT_MEAN_TIME)       # FMT distribution time parameters
     param.TRIAGE_TIME = (param.TRIAGE_MEAN_TIME, 0.1*param.TRIAGE_MEAN_TIME)       # FMT distribution time parameters
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
 
     param.REFERRAL_PROB = referral_percentage
     param.EXPERT_DAY_OFF = [i for i in range((len(param.DAYS) - experts_day_off + 1), len(param.DAYS) +1)]
@@ -853,7 +970,11 @@ def simulate():
     #examiners_mean_backlog = 24 * 60 * (queued_samples - examiners_samples)/SHIFT_EXAMINER
 
     experts_mean_backlog = 24 * 60 * (examiners.samplesSendToTriage - experts_inspected)/param.SHIFT_EXPERT
+<<<<<<< HEAD
+    triage_mean_backlog = 24 * 60 * (triage.samplesSendToFIU - triage_inspected)/param.SHIFT_TRIAGE
+=======
     triage_mean_backlog = 24 * 60 * (triage.samplesSendToExperts - triage_inspected)/param.SHIFT_TRIAGE
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
 
     #examiners_mean_backlog = numpy.mean(backlogT1List)
     #experts_mean_backlog =  numpy.mean(backlogT2List)
@@ -988,7 +1109,13 @@ if __name__ == '__main__':
                          ['Total Population', 'Total Impostors',
                           'Type Percentage', 'Impostors Percentage',
                           'Total FMT Time (min)', 'Total Triage Time (min)', 'Total FIU Time (min)',
+<<<<<<< HEAD
+                          'Passport production @Match', 'Passport production @FMT', 'Passport production @Triage', 'Passport production @FIU',
+                          'Passport blocked @Match', 'Passport blocked @FMT', 'Passport blocked @Triage', 'Passport blocked @FIU',
+                          'Total Impostors @FMT', 'Total Impostors @Triage', 'Total Impostors @FIU'],
+=======
                           'Total Impostors @FIU'],
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
                           'int32')
 
     df_toFMTSim = createDF(param.REFERRAL_TYPES, param.FMT_TYPES, 'float32')
@@ -1007,14 +1134,35 @@ if __name__ == '__main__':
 
     for rep in range(param.NUM_REP):
         print('Replication', rep)
+<<<<<<< HEAD
+        passportDict = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
+        passportDictFMT = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
+        passportDictTriage = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
+        passportDictFIU = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
+
+        blockedDict = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))        
+        blockedDictFMT = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
+        blockedDictTriage = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
+        blockedDictFIU = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
+        
+=======
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
         impostorDict = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
         impostorDictFMT = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
         impostorDictTriage = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
         impostorDictFIU = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
+<<<<<<< HEAD
+        
+=======
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
         populationTotal = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
         atTimeTotal = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
         triageTimeTotal = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
         opTimeTotal = dict(zip(param.REFERRAL_TYPES, [0, 0, 0, 0, 0]))
+<<<<<<< HEAD
+        
+=======
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
         df_referralRate = createDF(['No Referral', 'Referral to FMT', 'Referral to FIU'], param.REFERRAL_TYPES, 'int32')
         df_toFMT = createDF(param.REFERRAL_TYPES, param.FMT_TYPES, 'int32')
         df_toTriage = createDF(param.REFERRAL_TYPES, param.FMT_TYPES, 'int32')
@@ -1029,11 +1177,34 @@ if __name__ == '__main__':
         queuePlot(queueT2List, ax3, (param.SHIFT_EXPERT_ST, (param.SHIFT_EXPERT_ST + param.SHIFT_EXPERT)), 'Replication ' + str(rep))
 
         sumReplication(populationTotal,'Total Population')
+<<<<<<< HEAD
+        
+        sumReplication(passportDict, 'Passport production @Match')
+        sumReplication(passportDictFMT,'Passport production @FMT')
+        sumReplication(passportDictTriage,'Passport production @Triage')
+        sumReplication(passportDictFIU,'Passport production @FIU')
+
+        sumReplication(blockedDict, 'Passport blocked @Match')
+        sumReplication(blockedDictFMT,'Passport blocked @FMT')
+        sumReplication(blockedDictTriage,'Passport blocked @Triage')
+        sumReplication(blockedDictFIU,'Passport blocked @FIU')
+        
+        sumReplication(impostorDict,'Total Impostors')
+        sumReplication(impostorDictFMT,'Total Impostors @FMT')
+        sumReplication(impostorDictTriage,'Total Impostors @Triage')
+        sumReplication(impostorDictFIU,'Total Impostors @FIU')
+        
+        sumReplication(atTimeTotal,'Total FMT Time (min)')
+        sumReplication(triageTimeTotal,'Total Triage Time (min)')
+        sumReplication(opTimeTotal,'Total FIU Time (min)')
+        
+=======
         sumReplication(impostorDict,'Total Impostors')
         sumReplication(atTimeTotal,'Total FMT Time (min)')
         sumReplication(triageTimeTotal,'Total Triage Time (min)')
         sumReplication(opTimeTotal,'Total FIU Time (min)')
         sumReplication(impostorDictFIU,'Total Impostors @FIU')
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
 
         df_toFMTSim = df_toFMTSim + df_toFMT/param.NUM_DAYS
         df_toTriageSim = df_toTriageSim + df_toFMT/param.NUM_DAYS
@@ -1069,8 +1240,14 @@ if __name__ == '__main__':
     writer = pd.ExcelWriter('output.xlsx', engine='xlsxwriter')
 
     df_popSim.to_excel(writer)
+<<<<<<< HEAD
+    df_toFMTSim.to_excel(writer, startrow=10)
+    df_toTriageSim.to_excel(writer, startrow=20)
+    df_toFIUSim.to_excel(writer, startrow=30)
+=======
     df_toFMTSim.to_excel(writer, startcol=10)
     df_toTriageSim.to_excel(writer, startcol=15)
     df_toFIUSim.to_excel(writer, startcol=21)
+>>>>>>> bf78ff7e8f88bd07022aafa447e57498b88701bd
 
     writer.save()
